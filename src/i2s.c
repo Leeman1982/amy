@@ -521,7 +521,9 @@ struct audio_buffer_pool *init_audio() {
             .sample_stride = sizeof(int16_t) * AMY_NCHANS,
     };
 
-    struct audio_buffer_pool *producer_pool = audio_new_producer_pool(&producer_format, 3, AMY_BLOCK_SIZE);
+    // 6 blocks (~16 ms at 128/48k) instead of 3 so a blocking display refresh
+    // (e.g. a full I2C OLED frame on the audio core) can't underrun the DAC.
+    struct audio_buffer_pool *producer_pool = audio_new_producer_pool(&producer_format, 6, AMY_BLOCK_SIZE);
 
     bool __unused ok;
     const struct audio_format *output_format;
