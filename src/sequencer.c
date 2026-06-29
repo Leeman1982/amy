@@ -146,10 +146,20 @@ uint8_t sequencer_add_event(amy_event *e) {
     // e->sequence is set up.
     // if the tag already exists - if there's tick/period, overwrite, if there's no tick / period, we should remove the entry
     //fprintf(stderr, "sequencer_add_event: e->instrument %d e->note %.0f e->vel %.2f tick %d period %d tag %d\n", e->instrument, e->midi_note, e->velocity, e->sequence[SEQUENCE_TICK], e->sequence[SEQUENCE_PERIOD], e->sequence[SEQUENCE_TAG]);
-    int32_t tag = e->sequence[SEQUENCE_TAG];
-    if (tag > max_sequences) {
-        fprintf(stderr, "sequencer tag %" PRIi32" (with tick %" PRIu32", period %" PRIu32") is greater than or eq max_sequences %" PRIi32"\n",
-                tag, e->sequence[SEQUENCE_TICK], e->sequence[SEQUENCE_PERIOD], max_sequences);
+    // The string API (parse_list_uint32_t) defaults omitted tick/period/tag to 0, but the
+    // C struct API (amy_default_event) leaves them AMY_UNSET (== UINT32_MAX). Normalize unset
+    // fields to 0 here so both paths match the documented "omitted == 0" behavior. Without this,
+    // an unset tag becomes a negative index (sequences[-1]) and an unset tick/period (UINT32_MAX)
+    // makes a periodic sequence never fire.
+    uint32_t tick   = AMY_IS_SET(e->sequence[SEQUENCE_TICK])   ? e->sequence[SEQUENCE_TICK]   : 0;
+    uint32_t period = AMY_IS_SET(e->sequence[SEQUENCE_PERIOD]) ? e->sequence[SEQUENCE_PERIOD] : 0;
+    int32_t  tag    = AMY_IS_SET(e->sequence[SEQUENCE_TAG])    ? (int32_t)e->sequence[SEQUENCE_TAG] : 0;
+    // sequences[] holds max_sequences entries (valid indices 0..max_sequences-1), so reject
+    // anything outside that range -- a tag == max_sequences (off-by-one) or a negative tag
+    // (e.g. an unset/overflowed tag) would otherwise write out of bounds.
+    if (tag < 0 || tag >= max_sequences) {
+        fprintf(stderr, "sequencer tag %" PRIi32" (with tick %" PRIu32", period %" PRIu32") is out of range [0, %" PRIi32")\n",
+                tag, tick, period, max_sequences);
         // ignore
         return 0;
     }
@@ -157,12 +167,12 @@ uint8_t sequencer_add_event(amy_event *e) {
     delta_release_list(sequences[tag].deltas);
     sequences[tag].deltas = NULL;
 
-    if(e->sequence[SEQUENCE_TICK] == 0 && e->sequence[SEQUENCE_PERIOD] == 0) return 0; // Ignore non-schedulable event.
-    if(e->sequence[SEQUENCE_TICK] != 0 && e->sequence[SEQUENCE_PERIOD] == 0 && e->sequence[SEQUENCE_TICK] <= amy_global.sequencer_tick_count) return 0; // don't schedule things in the past.
+    if(tick == 0 && period == 0) return 0; // Ignore non-schedulable event (also the delete-by-tag path).
+    if(tick != 0 && period == 0 && tick <= amy_global.sequencer_tick_count) return 0; // don't schedule things in the past.
 
     // Save the tick & period.
-    sequences[tag].tick = e->sequence[SEQUENCE_TICK];
-    sequences[tag].period = e->sequence[SEQUENCE_PERIOD];
+    sequences[tag].tick = tick;
+    sequences[tag].period = period;
     // Copy all the deltas for this event to the sequences entry.
     amy_event_to_deltas_queue(e, 0, &sequences[tag].deltas);
 
