@@ -898,6 +898,10 @@ void alloc_osc(int osc, uint8_t *max_num_breakpoints_per_bpset_or_null);
 void free_osc(int osc);
 void ensure_osc_allocd(int osc, uint8_t *max_num_breakpoints_per_bpset_or_null);
 void patches_init(int max_memory_patches);
+
+// Oscs below this floor are never auto-allocated to patch voices -- for hosts
+// that drive low-numbered oscs directly alongside the patch/instrument layer.
+extern uint16_t amy_reserved_oscs;
 void patches_deinit();
 void parse_algo_source(char* message, int16_t *vals);
 void hold_and_modify(uint16_t osc) ;
