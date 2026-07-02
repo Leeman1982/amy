@@ -2,8 +2,8 @@
 #ifndef __PCM_H
 #define __PCM_H
 #define PCM_AMY_SAMPLE_RATE 22050
-#define PCM_BASE_SAMPLES 518
-#define PCM_BASE_LENGTH 1459743
+#define PCM_BASE_SAMPLES 520
+#define PCM_BASE_LENGTH 1474639
 #define PCM_WAVETABLE_BASE PCM_BASE_SAMPLES
 #define PCM_WAVETABLE_SAMPLES 0
 #define PCM_WAVETABLE_LEN 0
@@ -533,5 +533,7 @@ const pcm_map_t pcm_map[PCM_MAP_ENTRIES] PROGMEM = {
     {1443993, 8294, 0, 8294, 51}, /* [515] Mini Saw 4 D#0 (std) */
     {1452287, 3820, 3462, 3813, 49}, /* [516] TB 303 4 C#0 (guitar) */
     {1456107, 3636, 0, 3636, 49}, /* [517] TB 303 3 C#0 (guitar) */
+    {1459743, 7392, 116, 7009, 60}, /* [518] 1080BASS (std) */
+    {1467135, 7504, 0, 7504, 67}, /* [519] STUDIOBS (std) */
 };
 #endif // __PCM_H
