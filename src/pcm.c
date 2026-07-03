@@ -169,6 +169,15 @@ void pcm_mod_trigger(uint16_t osc) {
 
 void pcm_note_off(uint16_t osc) {
     if(AMY_IS_SET(synth[osc]->preset)) {
+        // feedback >= 2: "sustain through release" -- the host has an amp
+        // envelope with a meaningful release stage, so don't stop the sample
+        // here: looped presets keep looping, one-shots keep playing to their
+        // natural end, and the EG fades the voice (the osc stops when the
+        // envelope completes).  Without this, the release stage had at most
+        // the sample's loop tail (~tens of ms) to act on.
+        if(msynth[osc]->feedback >= 2) {
+            return;
+        }
         uint32_t length = 0;
         memorypcm_preset_t rom_local;
         memorypcm_preset_t *preset =
@@ -292,10 +301,16 @@ SAMPLE render_pcm(SAMPLE* buf, uint16_t osc) {
                 } else {
                     if(msynth[osc]->feedback > 0) { // still looping.  The feedback flag is cleared by pcm_note_off.
                         if(base_index >= preset->loopend) { // loopend
-                            // back to loopstart
+                            // back to loopstart -- but only for a real sustain
+                            // loop.  One-shot presets have loopend == length;
+                            // wrapping those would machine-gun the whole
+                            // sample (reachable via feedback >= 2 sustain-
+                            // through-release on a one-shot).
                             int32_t loop_len = preset->loopend - preset->loopstart;
-                            synth[osc]->phase -= F2P(loop_len / (float)(1 << PCM_INDEX_BITS));
-                            base_index -= loop_len;
+                            if(loop_len > 0 && (uint32_t)loop_len < preset->length) {
+                                synth[osc]->phase -= F2P(loop_len / (float)(1 << PCM_INDEX_BITS));
+                                base_index -= loop_len;
+                            }
                         }
                     }
                 }
