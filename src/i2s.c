@@ -547,6 +547,13 @@ struct audio_buffer_pool *init_audio() {
 }
 
 void core1_main() {
+    // Register this core as a flash-lockout victim.  Hosts that write flash
+    // while audio runs (e.g. LittleFS song saves on arduino-pico) use the
+    // SDK's flash_safe_execute(), which must be able to pause core1 during
+    // erase/program.  Without this, a flash write either deadlocks waiting
+    // for core1 or lets core1 keep executing XIP reads from the sector being
+    // erased -- both present as a hard freeze.
+    multicore_lockout_victim_init();
     while (core1_running) {
         queue_entry_t entry;
         queue_remove_blocking(&call_queue, &entry);
